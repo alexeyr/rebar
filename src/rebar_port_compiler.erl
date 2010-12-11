@@ -103,7 +103,7 @@ compile(Config, AppFile) ->
             lists:foreach(fun({SoName,Bins}) ->
                 case needs_link(SoName, sets:to_list(sets:intersection([sets:from_list(Bins),sets:from_list(NewBins)]))) of
                   true ->
-                    rebar_utils:sh_failfast(?FMT("$CC ~s $LDFLAGS $DRV_LDFLAGS -o ~s",
+                    rebar_utils:sh_failfast(?FMT(link_cmd_template(),
                                                   [string:join(Bins, " "), SoName]), Env);
                   false ->
                     ?INFO("Skipping relink of ~s\n", [SoName]),
@@ -129,6 +129,30 @@ clean(Config, AppFile) ->
 %% ===================================================================
 %% Internal functions
 %% ===================================================================
+
+link_cmd_template() ->
+    link_cmd_template(os:type()).
+
+link_cmd_template({win32,_}) ->
+    "cmd /c %CC% ~s %LDFLAGS% %DRV_LDFLAGS% -Fe~s";
+link_cmd_template(_) ->
+    "$CC ~s $LDFLAGS $DRV_LDFLAGS -o ~s".
+
+cc_cmd_template() ->
+    cc_cmd_template(os:type()).
+
+cc_cmd_template({win32,_}) ->
+    "cmd /c %CC% -c %CFLAGS% %DRV_CFLAGS% ~s -Fe~s";
+cc_cmd_template(_) ->
+    "$CC -c $CFLAGS $DRV_CFLAGS ~s -o ~s".
+
+cxx_cmd_template() ->
+    cxx_cmd_template(os:type()).
+
+cxx_cmd_template({win32,_}) ->
+    "cmd /c %CXX% -c %CXXFLAGS% %DRV_CFLAGS% ~s -Fo~s > cxx_out";
+cxx_cmd_template(_) ->
+    "$CXX -c $CXXFLAGS $DRV_CFLAGS ~s -o ~s".
 
 expand_sources([], Acc) ->
     Acc;
@@ -174,10 +198,10 @@ compile_each([Source | Rest], Config, Env, NewBins, ExistingBins) ->
             ?CONSOLE("Compiling ~s\n", [Source]),
             case compiler(Ext) of
                 "$CC" ->
-                    rebar_utils:sh_failfast(?FMT("$CC -c $CFLAGS $DRV_CFLAGS ~s -o ~s",
+                    rebar_utils:sh_failfast(?FMT(cc_cmd_template(),
                                                  [Source, Bin]), Env);
                 "$CXX" ->
-                    rebar_utils:sh_failfast(?FMT("$CXX -c $CXXFLAGS $DRV_CFLAGS ~s -o ~s",
+                    rebar_utils:sh_failfast(?FMT(cxx_cmd_template(),
                                                  [Source, Bin]), Env)
             end,
             compile_each(Rest, Config, Env, [Bin | NewBins], ExistingBins);
@@ -310,6 +334,23 @@ os_env() ->
     lists:keydelete([],1,Os). %% Remove Windows current disk and path
 
 default_env() ->
+    default_env(os:type()).
+
+default_env({win32,_}) ->
+    ErlCflags = lists:concat([" -I", code:lib_dir(erl_interface, include),
+                              " -I", filename:join(erts_dir(), "include"),
+                              " "]),
+    ErlLDFlags = lists:concat([" -L", code:lib_dir(erl_interface, lib),
+                                   " -lerl_interface -lei"]),
+    [
+     {"CC", "cl"},
+     {"CXX", "cl"},
+     {"DRV_CFLAGS", ErlCflags},
+     {"DRV_LDFLAGS", "-LD -MD " ++ ErlLDFlags},
+     {"ERLANG_ARCH", integer_to_list(8 * erlang:system_info(wordsize))},
+     {"ERLANG_TARGET", rebar_utils:get_arch()}
+    ];
+default_env({unix,_}) ->
     [
      {"CC", "cc"},
      {"CXX", "c++"},
