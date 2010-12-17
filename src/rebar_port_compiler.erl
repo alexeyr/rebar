@@ -134,7 +134,7 @@ link_cmd_template() ->
     link_cmd_template(os:type()).
 
 link_cmd_template({win32,_}) ->
-    "cmd /c %CC% ~s %LDFLAGS% %DRV_LDFLAGS% -Fe~s";
+    "cmd /c %CC% ~s /Fe~s %LDFLAGS% %DRV_LDFLAGS%";
 link_cmd_template(_) ->
     "$CC ~s $LDFLAGS $DRV_LDFLAGS -o ~s".
 
@@ -142,7 +142,7 @@ cc_cmd_template() ->
     cc_cmd_template(os:type()).
 
 cc_cmd_template({win32,_}) ->
-    "cmd /c %CC% -c %CFLAGS% %DRV_CFLAGS% ~s -Fe~s";
+    "cmd /c %CC% /c %CFLAGS% %DRV_CFLAGS% ~s /Fo~s";
 cc_cmd_template(_) ->
     "$CC -c $CFLAGS $DRV_CFLAGS ~s -o ~s".
 
@@ -337,16 +337,16 @@ default_env() ->
     default_env(os:type()).
 
 default_env({win32,_}) ->
-    ErlCflags = lists:concat([" -I", code:lib_dir(erl_interface, include),
-                              " -I", filename:join(erts_dir(), "include"),
+    ErlCflags = lists:concat([" /I", code:lib_dir(erl_interface, include),
+                              " /I", filename:join(erts_dir(), "include"),
                               " "]),
-    ErlLDFlags = lists:concat([" -L", code:lib_dir(erl_interface, lib),
-                                   " -lerl_interface -lei"]),
+    ErlLDFlags = lists:concat([" /LIBPATH:", code:lib_dir(erl_interface, lib),
+                                   " erl_interface.lib ei.lib"]),
     [
      {"CC", "cl"},
      {"CXX", "cl"},
      {"DRV_CFLAGS", ErlCflags},
-     {"DRV_LDFLAGS", "-LD -MD " ++ ErlLDFlags},
+     {"DRV_LDFLAGS", "/LD /MD /link " ++ ErlLDFlags},
      {"ERLANG_ARCH", integer_to_list(8 * erlang:system_info(wordsize))},
      {"ERLANG_TARGET", rebar_utils:get_arch()}
     ];
