@@ -347,6 +347,8 @@ default_env({win32,_}) ->
      {"CXX", "cl"},
      {"DRV_CFLAGS", ErlCflags},
      {"DRV_LDFLAGS", "/LD /MD /link " ++ ErlLDFlags},
+     {"CFLAGS", " "},
+     {"LDFLAGS", " "},
      {"ERLANG_ARCH", integer_to_list(8 * erlang:system_info(wordsize))},
      {"ERLANG_TARGET", rebar_utils:get_arch()}
     ];
