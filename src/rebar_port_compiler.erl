@@ -315,9 +315,7 @@ expand_env_variable(InStr, VarName, VarValue) ->
     re:replace(R1, "\\\${" ++ VarName ++ "}", VarValue, [{return, list}]).
 
 expand_template(Template, Env) ->
-    lists:foldl(fun({[], _}, Acc) ->
-                        Acc;
-                   ({Name, Value}, Acc) ->
+    lists:foldl(fun({Name, Value}, Acc) ->
                         expand_env_variable(Acc, Name, Value)
                 end,
                 Template, Env).
@@ -343,8 +341,7 @@ erts_dir() ->
     lists:concat([code:root_dir(), "/erts-", erlang:system_info(version)]).
 
 os_env() ->
-    Os = [list_to_tuple(re:split(S, "=", [{return, list}, {parts, 2}])) || S <- os:getenv()],
-    lists:keydelete([],1,Os). %% Remove Windows current disk and path
+    [list_to_tuple(re:split(S, "=", [{return, list}, {parts, 2}])) || S <- os:getenv(), hd(S) /= $=].
 
 default_env() ->
     default_env(os:type()).
