@@ -103,8 +103,10 @@ compile(Config, AppFile) ->
             lists:foreach(fun({SoName,Bins}) ->
                 case needs_link(SoName, sets:to_list(sets:intersection([sets:from_list(Bins),sets:from_list(NewBins)]))) of
                   true ->
-                    rebar_utils:sh_failfast(?FMT(link_cmd_template(),
-                                                  [string:join(Bins, " "), SoName]), Env);
+                    rebar_utils:sh_failfast(
+                        expand_template(?FMT(link_cmd_template(),
+                                             [string:join(Bins, " "), SoName]),
+                                        Env), Env);
                   false ->
                     ?INFO("Skipping relink of ~s\n", [SoName]),
                     ok
@@ -134,7 +136,7 @@ link_cmd_template() ->
     link_cmd_template(os:type()).
 
 link_cmd_template({win32,_}) ->
-    "cmd /c %CC% ~s /Fe~s %LDFLAGS% %DRV_LDFLAGS%";
+    "$CC ~s /Fe~s $LDFLAGS $DRV_LDFLAGS";
 link_cmd_template(_) ->
     "$CC ~s $LDFLAGS $DRV_LDFLAGS -o ~s".
 
@@ -142,7 +144,7 @@ cc_cmd_template() ->
     cc_cmd_template(os:type()).
 
 cc_cmd_template({win32,_}) ->
-    "cmd /c %CC% /c %CFLAGS% %DRV_CFLAGS% ~s /Fo~s";
+    "$CC /c $CFLAGS $DRV_CFLAGS ~s /Fo~s";
 cc_cmd_template(_) ->
     "$CC -c $CFLAGS $DRV_CFLAGS ~s -o ~s".
 
@@ -150,7 +152,7 @@ cxx_cmd_template() ->
     cxx_cmd_template(os:type()).
 
 cxx_cmd_template({win32,_}) ->
-    "cmd /c %CXX% -c %CXXFLAGS% %DRV_CFLAGS% ~s -Fo~s > cxx_out";
+    "$CXX -c $CXXFLAGS $DRV_CFLAGS ~s -Fo~s > cxx_out";
 cxx_cmd_template(_) ->
     "$CXX -c $CXXFLAGS $DRV_CFLAGS ~s -o ~s".
 
@@ -198,11 +200,15 @@ compile_each([Source | Rest], Config, Env, NewBins, ExistingBins) ->
             ?CONSOLE("Compiling ~s\n", [Source]),
             case compiler(Ext) of
                 "$CC" ->
-                    rebar_utils:sh_failfast(?FMT(cc_cmd_template(),
-                                                 [Source, Bin]), Env);
+                    rebar_utils:sh_failfast(
+                        expand_template(?FMT(cc_cmd_template(),
+                                             [Source, Bin]),
+                                        Env), Env);
                 "$CXX" ->
-                    rebar_utils:sh_failfast(?FMT(cxx_cmd_template(),
-                                                 [Source, Bin]), Env)
+                    rebar_utils:sh_failfast(
+                        expand_template(?FMT(cxx_cmd_template(),
+                                             [Source, Bin]),
+                                        Env), Env)
             end,
             compile_each(Rest, Config, Env, [Bin | NewBins], ExistingBins);
 
@@ -308,6 +314,13 @@ expand_env_variable(InStr, VarName, VarValue) ->
     R1 = re:replace(InStr, "\\\$" ++ VarName, VarValue),
     re:replace(R1, "\\\${" ++ VarName ++ "}", VarValue, [{return, list}]).
 
+expand_template(Template, Env) ->
+    lists:foldl(fun({[], _}, Acc) ->
+                        Acc;
+                   ({Name, Value}, Acc) ->
+                        expand_env_variable(Acc, Name, Value)
+                end,
+                Template, Env).
 
 %%
 %% Filter a list of env vars such that only those which match the provided
