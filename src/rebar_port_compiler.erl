@@ -405,14 +405,30 @@ os_env() ->
     [{K, V} || {K, V} <- Os, K =/= []]. %% Drop variables without a name (Win32)
 
 default_templates() ->
+    default_templates(os:type()).
+
+default_templates({unix, _}) ->
     [{cxx, "{{'CXX'}} -c {{'CXXFLAGS'}} {{'DRV_CFLAGS'}} " ++
       "{{'PORT_IN_FILES'}} -o {{'PORT_OUT_FILE'}}"},
      {cc, "{{'CC'}} -c {{'CFLAGS'}} {{'DRV_CFLAGS'}} " ++
       "{{'PORT_IN_FILES'}} -o {{'PORT_OUT_FILE'}}"},
      {link, "{{'CC'}} {{'PORT_IN_FILES'}} {{'LDFLAGS'}} " ++
-      "{{'DRV_LDFLAGS'}} -o {{'PORT_OUT_FILE'}}"}].
+      "{{'DRV_LDFLAGS'}} -o {{'PORT_OUT_FILE'}}"}];
+default_templates(vxworks) ->
+    default_templates({unix, undefined});
+default_templates({win32, _}) ->
+    [{cxx, "{{'CXX'}} /c {{'CXXFLAGS'}} {{'DRV_CFLAGS'}} " ++
+      "{{'PORT_IN_FILES'}} /out:{{'PORT_OUT_FILE'}}"},
+     {cc, "{{'CC'}} /c {{'CFLAGS'}} {{'DRV_CFLAGS'}} " ++
+      "{{'PORT_IN_FILES'}} /out:{{'PORT_OUT_FILE'}}"},
+     {link, "{{'CC'}} {{'PORT_IN_FILES'}} {{'LDFLAGS'}} " ++
+      "{{'DRV_LDFLAGS'}} /out:{{'PORT_OUT_FILE'}}"}].
+
 
 default_env() ->
+    default_env(os:type()).
+
+default_env({unix, _}) ->
     EiInclude = code:lib_dir(erl_interface, include),
     ErtsInclude = filename:join(erts_dir(), "include"),
     EiLib = code:lib_dir(erl_interface, lib),
@@ -442,8 +458,25 @@ default_env() ->
      {"darwin10.*-32", "CFLAGS", "-m32"}, % OS X Snow Leopard flags for 32-bit
      {"darwin10.*-32", "CXXFLAGS", "-m32"},
      {"darwin10.*-32", "LDFLAGS", "-arch i386"}
+    ];
+default_env(vxworks) ->
+    default_env({unix, undefined});
+default_env({win32, _}) ->
+    [
+     {"CC", "cl"},
+     {"CXX", "cl"},
+     {"DRV_CFLAGS", lists:concat(["/Ic_src /Iinclude /W4 /wd4100 /wd4204",
+                                  " /I", code:lib_dir(erl_interface, include),
+                                  " /I", filename:join(erts_dir(), "include"),
+                                  " "])},
+     {"DRV_LDFLAGS", lists:concat(["/LD /link ", 
+                                   " /LIBPATH:", code:lib_dir(erl_interface, lib),
+                                   " erl_interface.lib ei.lib "])},
+     {"CFLAGS", " "},
+     {"LDFLAGS", " "},
+     {"ERLANG_ARCH", integer_to_list(8 * erlang:system_info(wordsize))},
+     {"ERLANG_TARGET", rebar_utils:get_arch()}
     ].
-
 
 
 source_to_bin(Source) ->
