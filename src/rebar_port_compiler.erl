@@ -381,11 +381,11 @@ default_env() ->
     EiLib = code:lib_dir(erl_interface, lib),
     [
      {"CXX_TEMPLATE",
-      "$CXX -c $CXXFLAGS $DRV_CFLAGS $PORT_IN_FILES -o $PORT_OUT_FILE"},
+      "$CXX $CXX_NO_LINKING_FLAG $CXXFLAGS $DRV_CFLAGS $PORT_IN_FILES ${CXX_OUT_OBJ_FILE_FLAG}$PORT_OUT_FILE"},
      {"CC_TEMPLATE",
-      "$CC -c $CFLAGS $DRV_CFLAGS $PORT_IN_FILES -o $PORT_OUT_FILE"},
+      "$CC $CC_NO_LINKING_FLAG $CFLAGS $DRV_CFLAGS $PORT_IN_FILES ${CC_OUT_OBJ_FILE_FLAG}$PORT_OUT_FILE"},
      {"LINK_TEMPLATE",
-      "$CC $PORT_IN_FILES $LDFLAGS $DRV_LDFLAGS -o $PORT_OUT_FILE"},
+      "$CC $PORT_IN_FILES $LDFLAGS $DRV_LDFLAGS ${LINK_OUT_SO_FLAG}$PORT_OUT_FILE"},
      {"CC", "cc"},
      {"CXX", "c++"},
      {"ERL_CFLAGS", lists:concat([" -I", EiInclude,
@@ -395,6 +395,11 @@ default_env() ->
      {"DRV_CFLAGS", "-g -Wall -fPIC $ERL_CFLAGS"},
      {"DRV_LDFLAGS", "-shared $ERL_LDFLAGS"},
      {"ERL_EI_LIBDIR", EiLib},
+     {"CXX_NO_LINKING_FLAG", "-c"},
+     {"CC_NO_LINKING_FLAG", "-c"},
+     {"CXX_OUT_OBJ_FILE_FLAG", "-o "},
+     {"CC_OUT_OBJ_FILE_FLAG", "-o "},
+     {"LINK_OUT_SO_FLAG", "-o "},
      {"darwin", "DRV_LDFLAGS",
       "-bundle -flat_namespace -undefined suppress $ERL_LDFLAGS"},
      {"ERLANG_ARCH", integer_to_list(8 * erlang:system_info(wordsize))},
@@ -410,9 +415,23 @@ default_env() ->
 
      {"darwin10.*-32", "CFLAGS", "-m32"}, % OS X Snow Leopard flags for 32-bit
      {"darwin10.*-32", "CXXFLAGS", "-m32"},
-     {"darwin10.*-32", "LDFLAGS", "-arch i386"}
-    ].
+     {"darwin10.*-32", "LDFLAGS", "-arch i386"},
 
+     {"win32.*", "CC", "cl"},
+     {"win32.*", "CXX", "cl"},
+     {"win32.*", "DRV_CFLAGS", lists:concat(["/Ic_src /Iinclude /W4",
+                                             " /I", EiInclude,
+                                             " /I", ErtsInclude,
+                                             " "])},
+     {"win32.*", "DRV_LDFLAGS", lists:concat(["/LD /link ",
+                                              " /LIBPATH:", EiLib,
+                                              " erl_interface.lib ei.lib "])},
+     {"win32.*", "CXX_NO_LINKING_FLAG", "/c"},
+     {"win32.*", "CC_NO_LINKING_FLAG", "/c"},
+     {"win32.*", "CXX_OUT_OBJ_FILE_FLAG", "/Fo"},
+     {"win32.*", "CC_OUT_OBJ_FILE_FLAG", "/Fo"},
+     {"win32.*", "LINK_OUT_SO_FLAG", "/out:"}
+    ].
 
 
 source_to_bin(Source) ->
