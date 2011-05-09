@@ -405,25 +405,12 @@ os_env() ->
     [{K, V} || {K, V} <- Os, K =/= []]. %% Drop variables without a name (Win32)
 
 default_templates() ->
-    default_templates(os:type()).
-
-default_templates({unix, _}) ->
-    [{cxx, "{{'CXX'}} -c {{'CXXFLAGS'}} {{'DRV_CFLAGS'}} " ++
-      "{{'PORT_IN_FILES'}} -o {{'PORT_OUT_FILE'}}"},
-     {cc, "{{'CC'}} -c {{'CFLAGS'}} {{'DRV_CFLAGS'}} " ++
-      "{{'PORT_IN_FILES'}} -o {{'PORT_OUT_FILE'}}"},
+    [{cxx, "{{'CXX'}} {{'CXX_NO_LINKING_FLAG'}} {{'CXXFLAGS'}} {{'DRV_CFLAGS'}} " ++
+      "{{'PORT_IN_FILES'}} {{'CXX_OUT_OBJ_FILE_FLAG'}}{{'PORT_OUT_FILE'}}"},
+     {cc, "{{'CC'}} {{'CC_NO_LINKING_FLAG'}} {{'CFLAGS'}} {{'DRV_CFLAGS'}} " ++
+      "{{'PORT_IN_FILES'}} {{'CC_OUT_OBJ_FILE_FLAG'}}{{'PORT_OUT_FILE'}}"},
      {link, "{{'CC'}} {{'PORT_IN_FILES'}} {{'LDFLAGS'}} " ++
-      "{{'DRV_LDFLAGS'}} -o {{'PORT_OUT_FILE'}}"}];
-default_templates(vxworks) ->
-    default_templates({unix, undefined});
-default_templates({win32, _}) ->
-    [{cxx, "{{'CXX'}} /c {{'CXXFLAGS'}} {{'DRV_CFLAGS'}} " ++
-      "{{'PORT_IN_FILES'}} /out:{{'PORT_OUT_FILE'}}"},
-     {cc, "{{'CC'}} /c {{'CFLAGS'}} {{'DRV_CFLAGS'}} " ++
-      "{{'PORT_IN_FILES'}} /out:{{'PORT_OUT_FILE'}}"},
-     {link, "{{'CC'}} {{'PORT_IN_FILES'}} {{'LDFLAGS'}} " ++
-      "{{'DRV_LDFLAGS'}} /out:{{'PORT_OUT_FILE'}}"}].
-
+      "{{'DRV_LDFLAGS'}} {{'LINK_OUT_SO_FLAG'}}{{'PORT_OUT_FILE'}}"}].
 
 default_env() ->
     default_env(os:type()).
@@ -446,6 +433,11 @@ default_env({unix, _}) ->
       "-bundle -flat_namespace -undefined suppress $ERL_LDFLAGS"},
      {"ERLANG_ARCH", integer_to_list(8 * erlang:system_info(wordsize))},
      {"ERLANG_TARGET", rebar_utils:get_arch()},
+     {"CXX_NO_LINKING_FLAG", "-c"},
+     {"CC_NO_LINKING_FLAG", "-c"},
+     {"CXX_OUT_OBJ_FILE_FLAG", "-o "},
+     {"CC_OUT_OBJ_FILE_FLAG", "-o "},
+     {"LINK_OUT_SO_FLAG", "-o "},
 
      {"solaris.*-64$", "CFLAGS", "-D_REENTRANT -m64"}, % Solaris specific flags
      {"solaris.*-64$", "CXXFLAGS", "-D_REENTRANT -m64"},
@@ -475,7 +467,12 @@ default_env({win32, _}) ->
      {"CFLAGS", " "},
      {"LDFLAGS", " "},
      {"ERLANG_ARCH", integer_to_list(8 * erlang:system_info(wordsize))},
-     {"ERLANG_TARGET", rebar_utils:get_arch()}
+     {"ERLANG_TARGET", rebar_utils:get_arch()},
+     {"CXX_NO_LINKING_FLAG", "/c"},
+     {"CC_NO_LINKING_FLAG", "/c"},
+     {"CXX_OUT_OBJ_FILE_FLAG", "/Fo"},
+     {"CC_OUT_OBJ_FILE_FLAG", "/Fo"},
+     {"LINK_OUT_SO_FLAG", "/out:"}
     ].
 
 
